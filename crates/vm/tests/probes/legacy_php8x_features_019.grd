@@ -1,0 +1,8 @@
+<?grd // SPDX-License-Identifier: Apache-2.0 (test harvested from yingkitw/phprs, see NOTICE)
+class Base {
+    public const VERSION = '1.0.0';
+}
+class Child extends Base {
+    public const VERSION = '9.9.9';
+}
+echo Child::VERSION;

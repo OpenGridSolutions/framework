@@ -1,0 +1,5 @@
+<?grd // SPDX-License-Identifier: Apache-2.0 (test harvested from yingkitw/phprs, see NOTICE)
+        $s = "a";
+        $s .= "-b";
+        $s .= "-c";
+        echo $s;

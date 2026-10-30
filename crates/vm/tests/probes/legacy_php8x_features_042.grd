@@ -1,0 +1,15 @@
+<?grd // SPDX-License-Identifier: Apache-2.0 (test harvested from yingkitw/phprs, see NOTICE)
+class Money {
+    public $amount;
+    public $currency;
+    public function __construct($amount, $currency) {
+        $this->amount = $amount;
+        $this->currency = $currency;
+    }
+    public function __serialize() {
+        return ["a" => $this->amount, "c" => $this->currency];
+    }
+}
+$m = new Money(100, "USD");
+$s = serialize($m);
+echo $s . "\n";

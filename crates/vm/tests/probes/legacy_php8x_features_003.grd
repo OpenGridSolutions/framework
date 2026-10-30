@@ -1,0 +1,13 @@
+<?grd // SPDX-License-Identifier: Apache-2.0 (test harvested from yingkitw/phprs, see NOTICE)
+class MagicBox {
+    public function __get($name) {
+        return "got_" . $name;
+    }
+    public function __set($name, $value) {
+        echo "set_" . $name . "=" . $value;
+    }
+}
+$box = new MagicBox();
+$box->foo = "bar";
+echo "|";
+echo $box->baz;

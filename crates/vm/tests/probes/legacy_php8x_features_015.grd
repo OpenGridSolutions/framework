@@ -1,0 +1,8 @@
+<?grd // SPDX-License-Identifier: Apache-2.0 (test harvested from yingkitw/phprs, see NOTICE)
+$a = 'Home';
+$b = 'index';
+if ($a == 'Home' && $b == 'index') {
+    echo "ok\n";
+} else {
+    echo "fail\n";
+}

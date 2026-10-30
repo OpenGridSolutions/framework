@@ -1,0 +1,13 @@
+<?grd // SPDX-License-Identifier: Apache-2.0 (test harvested from yingkitw/phprs, see NOTICE)
+        function f() {
+            throw new Exception("x");
+        }
+        $log = [];
+        try {
+            f();
+            $log[] = "skipped";
+        } catch (Exception $e) {
+            $log[] = "caught";
+        }
+        $log[] = "after";
+        echo implode(",", $log);

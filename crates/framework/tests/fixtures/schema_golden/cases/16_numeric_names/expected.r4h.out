@@ -1,0 +1,8 @@
+-- ------------------------------
+-- TABLE: t
+-- ------------------------------
+
+DEFINE TABLE t SCHEMAFULL;
+
+DEFINE FIELD 1 ON t TYPE string;
+DEFINE FIELD 2 ON t TYPE int;

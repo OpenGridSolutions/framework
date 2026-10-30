@@ -1,0 +1,71 @@
+<?grd
+namespace Tasks\Controllers;
+
+use OpenGrid\Http\Response;
+use OpenGrid\Support\Session;
+use Tasks\Support\Cart;
+
+final class SessionController
+{
+    public function put(): array
+    {
+        if (request()->query('name') != null) {
+            Session::put('name', request()->query('name'));
+        }
+        $n = Session::get('hits', 0) + 1;
+        Session::put('hits', $n);
+        return ['hits' => $n];
+    }
+
+    public function show(): array
+    {
+        return ['name' => Session::get('name'), 'hits' => Session::get('hits', 0), 'msg' => Session::get('msg'), 'id' => Session::getId()];
+    }
+
+    public function flash(): Response
+    {
+        Session::flash('msg', 'saved!');
+        return Response::redirect('/session');
+    }
+
+    public function token(): array
+    {
+        return ['token' => csrf_token()];
+    }
+
+    public function protectedPost(): array
+    {
+        return ['ok' => true];
+    }
+
+    public function cart(): array
+    {
+        $cart = Session::remember('cart', function (): Cart {
+            Session::put('cart_builds', Session::get('cart_builds', 0) + 1);
+            return new Cart('guest');
+        });
+        if (request()->query('item') != null) {
+            $cart->add(request()->query('item'));
+        }
+        // the same object within one request
+        $same = Session::remember('cart', fn (): Cart => new Cart('other')) === $cart;
+        return ['items' => $cart->items(), 'owner' => $cart->owner, 'builds' => Session::get('cart_builds'), 'same' => $same];
+    }
+
+    public function cartClear(): array
+    {
+        Session::forget('cart');
+        return ['cleared' => true];
+    }
+
+    public function ip(): array
+    {
+        return ['ip' => request()->ip()];
+    }
+
+    public function logout(): array
+    {
+        Session::invalidate();
+        return ['bye' => true];
+    }
+}

@@ -1,0 +1,8 @@
+<?grd // SPDX-License-Identifier: Apache-2.0 (test harvested from yingkitw/phprs, see NOTICE)
+class Dynamic {
+    public function __call($name, $args) {
+        return $name . "(" . count($args) . ")";
+    }
+}
+$obj = new Dynamic();
+echo $obj->doSomething(1, 2, 3);

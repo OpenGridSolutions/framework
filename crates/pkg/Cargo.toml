@@ -1,0 +1,18 @@
+[package]
+name = "opengrid-pkg"
+version = "0.1.0"
+edition = "2024"
+description = "OpenGrid module manager: modules from Git into modules/, with a lock file (PKG1)"
+license = "AGPL-3.0-or-later"
+
+[lib]
+name = "opengrid_pkg"
+path = "src/lib.rs"
+
+[dependencies]
+# the module manifest (modules/<m>/module.toml) and its parser
+grd-vm = { path = "../vm" }
+serde = { version = "1.0", features = ["derive"] }
+toml = "1"
+sha2 = "0.11"
+tempfile = "3"

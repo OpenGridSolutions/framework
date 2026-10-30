@@ -1,0 +1,17 @@
+<?grd // SPDX-License-Identifier: Apache-2.0 (test harvested from yingkitw/phprs, see NOTICE)
+        function normal() {
+            try {
+                return "fine";
+            } catch (Exception $e) {
+                return "wrong";
+            }
+        }
+        function thrower() {
+            throw new Exception("later");
+        }
+        echo normal();
+        try {
+            thrower();
+        } catch (Exception $e) {
+            echo " then " . $e->getMessage();
+        }

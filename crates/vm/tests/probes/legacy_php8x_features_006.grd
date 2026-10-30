@@ -1,0 +1,7 @@
+<?grd // SPDX-License-Identifier: Apache-2.0 (test harvested from yingkitw/phprs, see NOTICE)
+$obj = new class {
+    public function greet() {
+        return "hello";
+    }
+};
+echo $obj->greet();

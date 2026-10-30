@@ -1,0 +1,6 @@
+<?grd // SPDX-License-Identifier: Apache-2.0 (test harvested from yingkitw/phprs, see NOTICE)
+        class C { public $p = 10; }
+        $c = new C();
+        $c->p += 5;
+        $c->p .= "!";
+        echo $c->p;

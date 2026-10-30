@@ -1,0 +1,2 @@
+<?grd
+function f(): never { throw new RuntimeException("n"); } try { f(); } catch (RuntimeException $e) { echo "ok\n"; }

@@ -1,0 +1,21 @@
+<?grd // SPDX-License-Identifier: Apache-2.0 (test harvested from yingkitw/phprs, see NOTICE)
+try {
+    throw new RuntimeException("runtime error");
+} catch (Exception $e) {
+    echo "caught as Exception: " . $e->getMessage() . "\n";
+}
+try {
+    throw new UnexpectedValueException("bad value");
+} catch (RuntimeException $e) {
+    echo "caught as RuntimeException: " . $e->getMessage() . "\n";
+}
+try {
+    throw new InvalidArgumentException("bad arg");
+} catch (LogicException $e) {
+    echo "caught as LogicException: " . $e->getMessage() . "\n";
+}
+try {
+    throw new OverflowException("overflow");
+} catch (RuntimeException $e) {
+    echo "caught as RuntimeException: " . $e->getMessage() . "\n";
+}

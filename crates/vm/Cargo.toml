@@ -1,0 +1,47 @@
+[package]
+name = "grd-vm"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+description = "VM for the OpenGrid dialect (.grd): mago-based front end, slot-compiled op arrays, handle-based object store"
+publish = false
+
+[lib]
+name = "grd_vm"
+path = "src/lib.rs"
+
+[dependencies]
+mago-syntax = "=1.58.2"
+mago-allocator = "=1.58.2"
+mago-database = "=1.58.2"
+mago-span = "=1.58.2"
+indexmap = "2"
+foldhash = "0.2"
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["use-std"] }
+getrandom = "0.4"
+serde_json = "1"
+fancy-regex = "0.19"
+chrono = "0.4"
+chrono-tz = "0.10"
+bcrypt = "0.19"
+# MOD1: module manifests (modules/<m>/module.toml)
+toml = "1"
+# hashing (RustCrypto, the versions SurrealDB already pulls in)
+digest = "0.10"
+md-5 = "0.10"
+sha1 = "0.10"
+sha2 = "0.10"
+hmac = "0.12"
+subtle = "2"
+# crc32() (table/SIMD; the version SurrealDB already pulls in)
+crc32fast = "1"
+# substring search (SIMD; already in the tree via regex)
+memchr = "2"
+
+[dev-dependencies]
+
+[features]
+# Per-opcode counts and time for PERF1 (grd run prints a ranking to stderr);
+# costs nothing when off.
+opstats = []

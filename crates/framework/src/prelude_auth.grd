@@ -1,0 +1,206 @@
+<?grd
+namespace OpenGrid\Auth;
+
+use OpenGrid\Database\Model;
+use OpenGrid\Http\Middleware;
+use OpenGrid\Http\Request;
+use OpenGrid\Support\Config;
+use OpenGrid\Support\Log;
+use OpenGrid\Support\RateLimiter;
+
+/**
+ * API token of a user (AU1, like Laravel Sanctum's personal access tokens).
+ * Only the SHA-256 hash of the token is stored; the plain token is handed
+ * out once, at creation. Table in the framework's own schema fragment.
+ */
+final class PersonalAccessToken extends Model
+{
+    protected static string $table = 'personal_access_tokens';
+    protected bool $timestamps = false;
+    protected array $fillable = ['user', 'name', 'token_hash', 'created_at', 'last_used_at', 'expires_at'];
+    protected array $hidden = ['token_hash'];
+}
+
+/**
+ * Token authentication for APIs (AU1): bearer tokens, no sessions.
+ * The user model is `settings.auth.model` (e.g. `Auth\Models\User`); it
+ * needs the fields `email` and `password` (a bcrypt hash from
+ * `password_hash`, compatible with Laravel).
+ */
+final class Auth
+{
+    /** The user model class from the configuration. */
+    public static function model(): string
+    {
+        $class = Config::get('auth.model', '');
+        if ($class === '' || !class_exists($class)) {
+            throw new \RuntimeException('settings.auth.model must name the user model class');
+        }
+        return $class;
+    }
+
+    /**
+     * The user with these credentials, or null (same answer for both
+     * failures). AU2: failed attempts count per email and IP; after
+     * `auth.login_throttle.max_attempts` (5) within `decay_seconds` (60) the
+     * login answers 429 with `Retry-After` until the window ends, even with
+     * the right password. A success clears the counter. `max_attempts: 0`
+     * switches the throttle off.
+     */
+    public static function attempt(string $email, string $password): ?Model
+    {
+        $max = (int) Config::get('auth.login_throttle.max_attempts', 5);
+        $key = 'login|' . mb_strtolower($email) . '|' . (request()->ip() ?? '');
+        if ($max > 0 && RateLimiter::tooManyAttempts($key, $max)) {
+            $seconds = RateLimiter::availableIn($key);
+            abort(429, "Too many login attempts. Please try again in {$seconds} seconds.", ['Retry-After' => (string) $seconds]);
+        }
+        $user = self::checkCredentials($email, $password);
+        if ($max > 0) {
+            if ($user === null) {
+                RateLimiter::hit($key, (int) Config::get('auth.login_throttle.decay_seconds', 60));
+            } else {
+                RateLimiter::clear($key);
+            }
+        }
+        return $user;
+    }
+
+    private static function checkCredentials(string $email, string $password): ?Model
+    {
+        $class = self::model();
+        $user = $class::where('email', $email)->first();
+        if ($user === null) {
+            // spend the same time as a real check, so timing does not tell whether the account exists
+            password_verify($password, '$2y$10$c9I5e50pSO/sY8GirDR4iex0UUR5X/smTgxo2402ubMbAGHcxsVI.');
+            return null;
+        }
+        return password_verify($password, (string) $user->password) ? $user : null;
+    }
+
+    /** A new token for the user: 256 random bits, stored as SHA-256 hash; the plain token is returned once. */
+    /**
+     * A new bearer token for the user (plain text, shown once). `$expiresAt`
+     * as Sanctum's `createToken(…, expiresAt:)`; `auth.token_expiration`
+     * (minutes, default 0 = never) as Sanctum's `sanctum.expiration`.
+     */
+    public static function createToken(Model $user, string $name = 'api', ?\DateTimeInterface $expiresAt = null): string
+    {
+        $plain = bin2hex(random_bytes(32));
+        $row = [
+            'user' => $user->id,
+            'name' => $name,
+            'token_hash' => hash('sha256', $plain),
+            'created_at' => new \DateTimeImmutable(),
+        ];
+        if ($expiresAt !== null) {
+            $row['expires_at'] = $expiresAt;
+        }
+        PersonalAccessToken::create($row);
+        return $plain;
+    }
+
+    /** The token record for a plain token, or null. */
+    public static function findToken(string $plain): ?PersonalAccessToken
+    {
+        if ($plain === '') {
+            return null;
+        }
+        return PersonalAccessToken::where('token_hash', hash('sha256', $plain))->first();
+    }
+
+    /** The user a plain token belongs to, or null; notes the use. */
+    public static function userFromToken(string $plain): ?Model
+    {
+        if ($plain === '') {
+            return null;
+        }
+        // DBP1: token and user in one query
+        $found = \opengrid_token_with_user(hash('sha256', $plain), PersonalAccessToken::class, self::model());
+        if ($found === null) {
+            return null;
+        }
+        [$token, $user] = $found;
+        // expired as in Sanctum: older than `auth.token_expiration` minutes,
+        // or past its own `expires_at`
+        $now = new \DateTimeImmutable();
+        $minutes = (int) Config::get('auth.token_expiration', 0);
+        if ($minutes > 0 && $token->created_at->getTimestamp() <= $now->getTimestamp() - $minutes * 60) {
+            return null;
+        }
+        $expires = $token->expires_at ?? null;
+        if ($expires !== null && $expires->getTimestamp() < $now->getTimestamp()) {
+            return null;
+        }
+        // DBP1: note the use at most every `auth.token_touch_seconds` (default 60;
+        // 0 = every request; 1 is what Sanctum does in effect, as Eloquent saves
+        // last_used_at only when it changed to the second): a read-only request
+        // then writes nothing
+        $every = (int) Config::get('auth.token_touch_seconds', 60);
+        $last = $token->last_used_at ?? null;
+        if ($every <= 0 || $last === null || $now->getTimestamp() - $last->getTimestamp() >= $every) {
+            self::noteUse($token, $now);
+        }
+        return $user;
+    }
+
+    /**
+     * TOK2: noting the use must never fail the request. A failed write
+     * (concurrent requests with one token) is tried once more, then only
+     * logged; the token stays valid.
+     */
+    private static function noteUse(Model $token, \DateTimeImmutable $now): void
+    {
+        for ($try = 1; $try <= 2; $try++) {
+            try {
+                $token->update(['last_used_at' => $now]);
+                return;
+            } catch (\RuntimeException $e) {
+                if ($try === 2) {
+                    Log::warning('token use not noted', ['error' => $e->getMessage()]);
+                }
+            }
+        }
+    }
+
+    /** Delete the token of the current request (logout). */
+    public static function revokeCurrentToken(): void
+    {
+        $plain = request()->bearerToken();
+        $token = self::findToken($plain ?? '');
+        if ($token !== null) {
+            $token->forceDelete();
+        }
+    }
+
+    public static function user(): ?Model
+    {
+        return request()->user();
+    }
+
+    public static function id(): mixed
+    {
+        $user = request()->user();
+        return $user === null ? null : $user->id;
+    }
+
+    public static function check(): bool
+    {
+        return request()->user() !== null;
+    }
+}
+
+/** Middleware `auth`: a valid bearer token or 401 (JSON). */
+final class Authenticate extends Middleware
+{
+    public function handle(Request $request, \Closure $next): mixed
+    {
+        $plain = $request->bearerToken();
+        $user = $plain === null ? null : Auth::userFromToken($plain);
+        if ($user === null) {
+            abort(401, 'Unauthenticated.');
+        }
+        $request->setUser($user);
+        return $next($request);
+    }
+}

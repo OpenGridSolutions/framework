@@ -1,0 +1,56 @@
+# OpenGrid workspace: crates/vm (grd-vm, the dialect VM), crates/framework
+# (Loco hooks, worker pool, natives), crates/pkg (module manager). The old
+# phprs core was removed on 2026-10-24; see NOTICE and tag legacy-core-last.
+[workspace]
+resolver = "2"
+members = [
+    "crates/vm",
+    "crates/jit",
+    "crates/framework",
+    "crates/pkg",
+]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+# Keep debug info small (2026-10-24): the ~270 dependencies without debug info,
+# our own code with line tables only. Before: 2.1 GB per test binary,
+# target/debug 221 GB.
+[profile.dev]
+opt-level = 0
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
+[profile.test]
+opt-level = 1
+debug = "line-tables-only"
+incremental = true
+
+[profile.test.package."*"]
+debug = false
+
+# Measurements (benchmarks, comparison with PHP): release optimization, but faster
+# to build than `release` (thin LTO, 16 codegen units). Not for distribution.
+[profile.profiling]
+inherits = "release"
+lto = "thin"
+codegen-units = 16
+strip = false
+debug = "line-tables-only"
+
+# BENCH3 (Jonas, 28.10.): the framework binary the benchmark measures, as
+# well optimized as the compiler allows: fat LTO over the whole crate graph,
+# one codegen unit, panic=abort; run_all.sh adds `-C target-cpu=native`
+# through RUSTFLAGS and trains it with PGO (bench/pgo.sh). The instrumented
+# PGO build stays on `profiling` (fat LTO of it did not fit into memory).
+[profile.perf]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

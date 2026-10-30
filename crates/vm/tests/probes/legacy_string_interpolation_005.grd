@@ -1,0 +1,7 @@
+<?grd // SPDX-License-Identifier: Apache-2.0 (test harvested from yingkitw/phprs, see NOTICE)
+        class User {
+            public $name = "Alice";
+            public $role = "admin";
+        }
+        $u = new User();
+        echo "{$u->name} is {$u->role}";

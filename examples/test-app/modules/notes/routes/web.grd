@@ -1,0 +1,12 @@
+<?grd
+use Notes\Controllers\NoteController;
+use Notes\Http\Middleware\JsonWrites;
+use OpenGrid\Routing\Route;
+
+Route::group(['prefix' => '/api/notes', 'middleware' => ['auth', JsonWrites::class]], function () {
+    Route::get('', [NoteController::class, 'index']);
+    Route::post('', [NoteController::class, 'store']);
+    Route::get('/{id}', [NoteController::class, 'show']);
+    Route::patch('/{id}', [NoteController::class, 'update']);
+    Route::delete('/{id}', [NoteController::class, 'destroy']);
+});

@@ -1,0 +1,2 @@
+<?grd
+try { throw new LogicException("o", 1, new InvalidArgumentException("i")); } catch (Exception $e) { echo get_class($e->getPrevious()), "\n"; }

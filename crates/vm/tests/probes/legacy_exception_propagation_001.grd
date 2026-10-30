@@ -1,0 +1,10 @@
+<?grd // SPDX-License-Identifier: Apache-2.0 (test harvested from yingkitw/phprs, see NOTICE)
+        function risky() {
+            throw new Exception("boom");
+        }
+        try {
+            risky();
+            echo "not reached";
+        } catch (Exception $e) {
+            echo "caught: " . $e->getMessage();
+        }
